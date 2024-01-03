@@ -91,6 +91,9 @@ func makeslicecopy(et *_type, tolen int, fromlen int, from unsafe.Pointer) unsaf
 
 func makeslice(et *_type, len, cap int) unsafe.Pointer {
 	mem, overflow := math.MulUintptr(et.Size_, uintptr(cap))
+	//内存空间的大小发生了溢出；
+	//申请的内存大于最大可分配的内存；
+	//传入的长度小于 0 或者长度大于容量；
 	if overflow || mem > maxAlloc || len < 0 || len > cap {
 		// NOTE: Produce a 'len out of range' error instead of a
 		// 'cap out of range' error when someone does make([]T, bignumber).
@@ -279,6 +282,7 @@ func nextslicecap(newLen, oldCap int) int {
 		// Transition from growing 2x for small slices
 		// to growing 1.25x for large slices. This formula
 		// gives a smooth-ish transition between the two.
+		//按照newcap / 4 + 192 递增，当值>= 期望值返回
 		newcap += (newcap + 3*threshold) >> 2
 
 		// We need to check `newcap >= newLen` and whether `newcap` overflowed.
