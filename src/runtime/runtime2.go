@@ -202,11 +202,13 @@ type funcval struct {
 	// variable-size, fn-specific data here
 }
 
+// 带方法的接口
 type iface struct {
-	tab  *itab
-	data unsafe.Pointer
+	tab  *itab          //接口类型和具体类型的组合
+	data unsafe.Pointer //存储数据的指针
 }
 
+// 不带方法的接口（空接口）
 type eface struct {
 	_type *_type
 	data  unsafe.Pointer
@@ -995,11 +997,11 @@ type funcinl struct {
 // Needs to be in sync with
 // ../cmd/compile/internal/reflectdata/reflect.go:/^func.WritePluginTable.
 type itab struct {
-	inter *interfacetype
-	_type *_type
-	hash  uint32 // copy of _type.hash. Used for type switches.
+	inter *interfacetype //接口类型元数据
+	_type *_type         //实现接口的类型元数据
+	hash  uint32         // copy of _type.hash. Used for type switches. 用于断言匹配类型是否一致的哈希值
 	_     [4]byte
-	fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter.
+	fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter. 实现接口的类型函数地址
 }
 
 // Lock-free stack node.

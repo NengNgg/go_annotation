@@ -17,6 +17,7 @@ import (
 // or the functions in compiletype.go to access this type instead.
 // (TODO: this admonition applies to every type in this package.
 // Put it in some shared location?)
+// 类型的元数据
 type Type struct {
 	Size_       uintptr
 	PtrBytes    uintptr // number of (prefix) bytes in the type that can contain pointers
@@ -414,8 +415,8 @@ func (t *Type) FieldAlign() int { return int(t.FieldAlign_) }
 
 type InterfaceType struct {
 	Type
-	PkgPath Name      // import path
-	Methods []Imethod // sorted by hash
+	PkgPath Name      // import path 接口的包名
+	Methods []Imethod // sorted by hash //方法函数
 }
 
 func (t *Type) ExportedMethods() []Method {
