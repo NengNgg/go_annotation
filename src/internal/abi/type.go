@@ -19,22 +19,22 @@ import (
 // Put it in some shared location?)
 // 类型的元数据
 type Type struct {
-	Size_       uintptr
-	PtrBytes    uintptr // number of (prefix) bytes in the type that can contain pointers
-	Hash        uint32  // hash of type; avoids computation in hash tables
-	TFlag       TFlag   // extra type information flags
-	Align_      uint8   // alignment of variable with this type
-	FieldAlign_ uint8   // alignment of struct field with this type
-	Kind_       uint8   // enumeration for C
+	Size_       uintptr //表示类型的大小（以字节为单位），即占用内存的大小。
+	PtrBytes    uintptr // number of (prefix) bytes in the type that can contain pointers 表示指针的大小（以字节为单位）。
+	Hash        uint32  // hash of type; avoids computation in hash tables 存储类型的哈希值，用于快速比较类型是否相等。
+	TFlag       TFlag   // extra type information flags  表示类型的标志，包含有关类型的额外信息。
+	Align_      uint8   // alignment of variable with this type 表示类表示结构体字段的对齐方式。型的对齐方式，即在内存中的对齐方式。
+	FieldAlign_ uint8   // alignment of struct field with this type 表示结构体字段的对齐方式。
+	Kind_       uint8   // enumeration for C 表示类型的种类，例如，是指针、数组、切片还是函数等。
 	// function for comparing objects of this type
-	// (ptr to object A, ptr to object B) -> ==?
+	// (ptr to object A, ptr to object B) -> ==? 是一个函数指针，指向一个用于比较两个指针是否相等的函数。
 	Equal func(unsafe.Pointer, unsafe.Pointer) bool
 	// GCData stores the GC type data for the garbage collector.
 	// If the KindGCProg bit is set in kind, GCData is a GC program.
-	// Otherwise it is a ptrmask bitmap. See mbitmap.go for details.
+	// Otherwise it is a ptrmask bitmap. See mbitmap.go for details. 存储垃圾收集相关的数据。
 	GCData    *byte
-	Str       NameOff // string form
-	PtrToThis TypeOff // type for pointer to this type, may be zero
+	Str       NameOff // string form 用于存储类型的字符串表示形式。
+	PtrToThis TypeOff // type for pointer to this type, may be zero 表示指向该类型的指针类型。
 }
 
 // A Kind represents the specific kind of type that a Type represents.
