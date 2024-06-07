@@ -459,14 +459,19 @@ func (c *cancelCtx) Err() error {
 
 // propagateCancel arranges for child to be canceled when parent is.
 // It sets the parent context of cancelCtx.
+// propagateCancel 函数用于将取消信号从父上下文传播到子上下文。
 func (c *cancelCtx) propagateCancel(parent Context, child canceler) {
+	// 将父上下文设置为当前上下文，以便于子上下文可以访问父上下文的属性。
 	c.Context = parent
-
+	// 获取父上下文的Done通道，用于监听父上下文的取消事件。
 	done := parent.Done()
+	// 如果父上下文没有设置Done通道，说明它永远不会被取消，直接返回。
 	if done == nil {
 		return // parent is never canceled
 	}
 
+	// 选择性地等待父上下文的Done通道被关闭，如果通道关闭，说明父上下文已经被取消，
+	// 那么就调用子上下文的cancel方法，并将父上下文的错误和原因传递给子上下文。
 	select {
 	case <-done:
 		// parent is already canceled
@@ -475,13 +480,16 @@ func (c *cancelCtx) propagateCancel(parent Context, child canceler) {
 	default:
 	}
 
+	// 如果父上下文是一个*cancelCtx类型或者从它派生出来的类型，
+	// 那么就使用它自己的机制来传播取消信号。
 	if p, ok := parentCancelCtx(parent); ok {
-		// parent is a *cancelCtx, or derives from one.
 		p.mu.Lock()
+		// 如果父上下文已经被取消，那么就传递取消信号给子上下文。
 		if p.err != nil {
-			// parent has already been canceled
 			child.cancel(false, p.err, p.cause)
 		} else {
+			// 如果父上下文的children字段还没有被创建，那么初始化它，
+			// 并将子上下文添加到字段中。
 			if p.children == nil {
 				p.children = make(map[canceler]struct{})
 			}
@@ -491,12 +499,15 @@ func (c *cancelCtx) propagateCancel(parent Context, child canceler) {
 		return
 	}
 
+	// 如果父上下文实现了AfterFunc方法，那么就使用它来在父上下文结束时
+	// 取消子上下文。
 	if a, ok := parent.(afterFuncer); ok {
-		// parent implements an AfterFunc method.
 		c.mu.Lock()
+		// 使用AfterFunc方法注册一个函数，该函数在父上下文结束时执行。
 		stop := a.AfterFunc(func() {
 			child.cancel(false, parent.Err(), Cause(parent))
 		})
+		// 更新当前上下文，使其包含停止函数的上下文。
 		c.Context = stopCtx{
 			Context: parent,
 			stop:    stop,
@@ -505,6 +516,8 @@ func (c *cancelCtx) propagateCancel(parent Context, child canceler) {
 		return
 	}
 
+	// 如果以上条件都不满足，那么创建一个新的goroutine来监控父上下文和子上下文的Done通道。
+	// 当任意一个通道关闭时，就调用子上下文的cancel方法。
 	goroutines.Add(1)
 	go func() {
 		select {
@@ -533,33 +546,45 @@ func (c *cancelCtx) String() string {
 // cancel closes c.done, cancels each of c's children, and, if
 // removeFromParent is true, removes c from its parent's children.
 // cancel sets c.cause to cause if this is the first time c is canceled.
+// cancel 方法设置取消错误，并将其传播给所有子上下文。
 func (c *cancelCtx) cancel(removeFromParent bool, err, cause error) {
+	// 如果err参数为空，则抛出恐慌，因为取消错误是必须的。
 	if err == nil {
 		panic("context: internal error: missing cancel error")
 	}
+	// 如果cause参数为空，则将其设置为err，因为cause通常包含导致取消的详细信息。
 	if cause == nil {
 		cause = err
 	}
+	// 锁定cancelCtx的互斥锁，以安全地修改内部状态。
 	c.mu.Lock()
+	// 如果cancelCtx已经被取消，则直接解锁并返回，不做任何处理。
 	if c.err != nil {
 		c.mu.Unlock()
 		return // already canceled
 	}
+	// 设置cancelCtx的错误和原因。
 	c.err = err
 	c.cause = cause
+	// 获取并关闭cancelCtx的Done通道，以通知等待的goroutine。
 	d, _ := c.done.Load().(chan struct{})
 	if d == nil {
 		c.done.Store(closedchan)
 	} else {
+		//当close当时候，我们可以从Done()方法接受到消息
 		close(d)
 	}
+	// 遍历cancelCtx的子上下文，并调用它们的cancel方法，传播取消信号。
 	for child := range c.children {
-		// NOTE: acquiring the child's lock while holding parent's lock.
+		// 注意：在持有父上下文的锁时获取子上下文的锁。
 		child.cancel(false, err, cause)
 	}
+	// 清空cancelCtx的子上下文映射。
 	c.children = nil
+	// 解锁cancelCtx的互斥锁。
 	c.mu.Unlock()
 
+	// 如果参数removeFromParent为真，则从父上下文的children列表中移除当前上下文。
 	if removeFromParent {
 		removeChild(c.Context, c)
 	}
